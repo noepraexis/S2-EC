@@ -6,6 +6,7 @@ A proposta desenvolve-se sob uma estrutura modular, reflitindo os princípios de
 
 ## 1. `Eidolon` - Módulo de Hardware Simulado
 **Responsabilidade:** Modelar e representar digitalmente o circuito fisíco composto por ESP32 e sensores industriais, operando am ambiente de simulação.
+
 **Funções principais:**
 - Construção do circuito virtual na plataforma Wokwi;
 - Escolha e parametrização dos sensores simulados (temperatura, vibração, luminosidade etc.);
@@ -15,6 +16,7 @@ A proposta desenvolve-se sob uma estrutura modular, reflitindo os princípios de
 
 ## 2. `Mnemon` - Módulo de Firmware (Software Embarcado)
 **Responsabilidade:** Implementar a lógica embarcada responsável pela aquisição dos dados sensoriais e sua transmissão estruturada para o exterior do microcontrolador.
+
 **Funções principais:**
 - Leitura periódica do sensores conectados ao ESP32;
 - Aplicação de pré-processamento e controle de fluxo local;
@@ -25,6 +27,7 @@ A proposta desenvolve-se sob uma estrutura modular, reflitindo os princípios de
 
 ## 3. `Katabase` - Módulo de Coleta e Armazenamento
 **Responsabilidade:** Realizar a captura, registro e estruturação dos dados adquiridos, garantind integridade temporal e persistência em formato utilizável para análise.
+
 **Funções principais:**
 - Escuta contínua da porta serial para recepção dos dados;
 - Exportação automática ou manual para formatos como CSV;
@@ -35,6 +38,7 @@ A proposta desenvolve-se sob uma estrutura modular, reflitindo os princípios de
 
 ## 4. `Gnoseon` - Módulo de Análise e Visualização
 **Responsabilidade:** Explorar os dados registrados, identificando padrões, correlações e anomalias, e apresentando os resultados de forma visual, estatística e interpretável.
+
 **Funções principais:**
 - Processamento dos dados utilizando **Python** ou **R**;
 - Geração de gráficos exploratórios (linha, barra, dispersão, boxplot);
