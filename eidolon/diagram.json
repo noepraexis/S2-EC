@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "author": "NOEPRÆXIS - Sistema de Alerta Precoce Multi-Sensor",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {
+        "env": "arduino-ide"
+      }
+    },
+    {
+      "type": "wokwi-dht22",
+      "id": "dht22",
+      "top": -200,
+      "left": 350,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-photoresistor-sensor",
+      "id": "ldr",
+      "top": -200,
+      "left": 100,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-mpu6050",
+      "id": "mpu6050",
+      "top": -200,
+      "left": -250,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-rgb-led",
+      "id": "rgb",
+      "top": 280,
+      "left": 210,
+      "attrs": {
+        "common": "cathode"
+      }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer",
+      "top": 300,
+      "left": -100,
+      "rotate": 200,
+      "attrs": {
+        "volume": "0.5"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 380,
+      "left": 220,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": 380,
+      "left": 280,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r3",
+      "top": 380,
+      "left": 340,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r4",
+      "top": -150,
+      "left": 150,
+      "rotate": 90,
+      "attrs": {
+        "value": "10000"
+      }
+    }
+  ],
+  "connections": [
+    ["esp:TX0", "$serialMonitor:RX", "", []],
+    ["esp:RX0", "$serialMonitor:TX", "", []],
+    
+    ["dht22:VCC", "esp:3V3", "red", ["v-20", "h-150"]],
+    ["dht22:GND", "esp:GND.2", "black", ["v20", "h-180"]],
+    ["dht22:SDA", "esp:D23", "green", ["v40", "h-200"]],
+    
+    ["ldr:VCC", "esp:3V3", "red", ["h0"]],
+    ["ldr:GND", "esp:GND.1", "black", ["h20", "v80"]],
+    ["ldr:AO", "esp:D34", "yellow", ["h40", "v100"]],
+    ["ldr:AO", "r4:1", "yellow", []],
+    ["r4:2", "esp:GND.1", "black", ["v80"]],
+    
+    ["mpu6050:VCC", "esp:3V3", "red", ["h-20", "v20", "h170"]],
+    ["mpu6050:GND", "esp:GND.1", "black", ["h-40", "v100", "h200"]],
+    ["mpu6050:SDA", "esp:D21", "blue", ["h-60", "v120", "h220"]],
+    ["mpu6050:SCL", "esp:D22", "yellow", ["h-80", "v140", "h240"]],
+    
+    ["buzzer:1", "esp:D32", "green", ["v-20", "h-80"]],
+    ["buzzer:2", "esp:GND.2", "black", ["v-40", "h-60"]],
+    
+    ["rgb:COM", "esp:GND.2", "black", ["v60", "h-180"]],
+    ["rgb:R", "r1:1", "red", ["v-20"]],
+    ["rgb:G", "r2:1", "green", ["v-20"]],
+    ["rgb:B", "r3:1", "blue", ["v-20"]],
+    ["r1:2", "esp:D25", "red", ["v40", "h-130"]],
+    ["r2:2", "esp:D26", "green", ["v40", "h-150"]],
+    ["r3:2", "esp:D27", "blue", ["v40", "h-170"]]
+  ],
+  "dependencies": {}
+}
