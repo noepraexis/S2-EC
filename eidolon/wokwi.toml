@@ -1,0 +1,11 @@
+[wokwi]
+version = 1
+name = "eidolon"
+
+# path to wokwi simulation
+firmware = "../mnemon/.pio/build/esp32dev/firmware.bin"
+elf = "../mnemon/.pio/build/esp32dev/firmware.elf"
+
+[[net.forward]]
+from = "localhost:8888"
+to = "target:80"
