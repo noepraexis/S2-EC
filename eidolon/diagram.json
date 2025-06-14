@@ -17,21 +17,32 @@
       "id": "dht22",
       "top": -200,
       "left": 350,
-      "attrs": {}
+      "attrs": {
+        "temperature": "25",
+        "humidity": "60"
+      }
     },
     {
       "type": "wokwi-photoresistor-sensor",
       "id": "ldr",
       "top": -200,
       "left": 100,
-      "attrs": {}
+      "attrs": {
+        "lux": "500",
+        "gamma": "0.7",
+        "rl10": "50"
+      }
     },
     {
       "type": "wokwi-mpu6050",
       "id": "mpu6050",
       "top": -200,
       "left": -250,
-      "attrs": {}
+      "attrs": {
+        "accelX": "0",
+        "accelY": "0",
+        "accelZ": "1"
+      }
     },
     {
       "type": "wokwi-rgb-led",
@@ -91,6 +102,15 @@
       "attrs": {
         "value": "10000"
       }
+    },
+    {
+      "type": "wokwi-lcd1602",
+      "id": "lcd",
+      "top": 150,
+      "left": 300,
+      "attrs": {
+        "pins": "i2c"
+      }
     }
   ],
   "connections": [
@@ -121,7 +141,12 @@
     ["rgb:B", "r3:1", "blue", ["v-20"]],
     ["r1:2", "esp:D25", "red", ["v40", "h-130"]],
     ["r2:2", "esp:D26", "green", ["v40", "h-150"]],
-    ["r3:2", "esp:D27", "blue", ["v40", "h-170"]]
+    ["r3:2", "esp:D27", "blue", ["v40", "h-170"]],
+    
+    ["lcd:VCC", "esp:3V3", "red", ["h20", "v-20", "h320"]],
+    ["lcd:GND", "esp:GND.1", "black", ["h40", "v0", "h300"]],
+    ["lcd:SDA", "esp:D21", "blue", ["h60", "v20", "h280"]],
+    ["lcd:SCL", "esp:D22", "yellow", ["h80", "v40", "h260"]]
   ],
   "dependencies": {}
 }
