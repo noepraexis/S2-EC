@@ -4,6 +4,8 @@
 #include <DHT.h>
 #include <ArduinoJson.h>
 #include <MPU6050.h>
+#include <WiFi.h>
+#include <ESPAsyncWebServer.h>
 
 // Definições dos pinos
 #define DHT_PIN 23
@@ -19,12 +21,34 @@ DHT dht(DHT_PIN, DHT_TYPE);
 LiquidCrystal_I2C lcd(0x27, 16, 2); // Endereço I2C padrão, 16 colunas, 2 linhas
 MPU6050 mpu;
 
+// Configuração WiFi (para Wokwi)
+const char* ssid = "Wokwi-GUEST";
+const char* password = "";
+
+// Servidor web
+AsyncWebServer server(80);
+
 // Variáveis globais
-String currentScenario = "sensor_validation";
+String currentScenario = "api_control";
 String alertLevel = "normal";
 unsigned long lastUpdate = 0;
 unsigned long scenarioStartTime = 0;
 int testStep = 0;
+
+// Controles manuais dos sensores via API
+struct SensorOverrides {
+    bool dht22_override = false;
+    float temperature_override = 25.0;
+    float humidity_override = 60.0;
+    
+    bool ldr_override = false;
+    int ldr_raw_override = 500;
+    
+    bool mpu6050_override = false;
+    float accel_x_override = 0.0;
+    float accel_y_override = 0.0;
+    float accel_z_override = 1.0;
+} sensorOverrides;
 
 // Thresholds para alertas
 const float TEMP_YELLOW = 35.0;
@@ -42,6 +66,9 @@ void setRGBColor(String color);
 void updateLCDDisplay(float temp, float humidity, float lux, float ax, float ay, float az);
 void sendJSONData(float temp, float humidity, int ldrRaw, float lux, float ax, float ay, float az);
 void updateScenarioStep();
+void setupWiFi();
+void setupAPIRoutes();
+void handleCORS(AsyncWebServerRequest *request);
 
 void setup() {
     Serial.begin(115200);
@@ -83,14 +110,18 @@ void setup() {
     
     // Mostrar inicialização no LCD
     lcd.setCursor(0, 0);
-    lcd.print("EIDOLON v1.0");
+    lcd.print("EIDOLON v2.0");
     lcd.setCursor(0, 1);
     lcd.print("Inicializando...");
     
     delay(2000);
     scenarioStartTime = millis();
     
-    Serial.println("Sistema iniciado - Eidolon Multi-Sensor");
+    // Configurar WiFi e API REST
+    setupWiFi();
+    setupAPIRoutes();
+    
+    Serial.println("Sistema iniciado - Eidolon Multi-Sensor com API REST");
 }
 
 void loop() {
@@ -100,20 +131,39 @@ void loop() {
     if (currentTime - lastUpdate >= 2000) {
         lastUpdate = currentTime;
         
-        // Ler sensores
-        float temperature = dht.readTemperature();
-        float humidity = dht.readHumidity();
-        int ldrRaw = analogRead(LDR_PIN);
+        // Ler sensores (com possível override via API)
+        float temperature, humidity;
+        if (sensorOverrides.dht22_override) {
+            temperature = sensorOverrides.temperature_override;
+            humidity = sensorOverrides.humidity_override;
+        } else {
+            temperature = dht.readTemperature();
+            humidity = dht.readHumidity();
+        }
+        
+        int ldrRaw;
+        if (sensorOverrides.ldr_override) {
+            ldrRaw = sensorOverrides.ldr_raw_override;
+        } else {
+            ldrRaw = analogRead(LDR_PIN);
+        }
         float lux = calculateLux(ldrRaw);
         
-        // Ler MPU6050
-        int16_t ax, ay, az;
-        mpu.getAcceleration(&ax, &ay, &az);
-        
-        // Converter para g (16384 LSB/g para escala ±2g)
-        float accelX = ax / 16384.0;
-        float accelY = ay / 16384.0;
-        float accelZ = az / 16384.0;
+        // Ler MPU6050 (com possível override via API)
+        float accelX, accelY, accelZ;
+        if (sensorOverrides.mpu6050_override) {
+            accelX = sensorOverrides.accel_x_override;
+            accelY = sensorOverrides.accel_y_override;
+            accelZ = sensorOverrides.accel_z_override;
+        } else {
+            int16_t ax, ay, az;
+            mpu.getAcceleration(&ax, &ay, &az);
+            
+            // Converter para g (16384 LSB/g para escala ±2g)
+            accelX = ax / 16384.0;
+            accelY = ay / 16384.0;
+            accelZ = az / 16384.0;
+        }
         
         // Debug ocasional para verificação
         if (millis() % 10000 < 100) { // A cada 10s por 100ms
@@ -261,8 +311,30 @@ void sendJSONData(float temp, float humidity, int ldrRaw, float lux, float ax, f
     // Timestamp ISO 8601
     char timestamp[32];
     unsigned long elapsed = millis() / 1000;
-    sprintf(timestamp, "2024-06-13T%02d:%02d:%02dZ", 
-            (int)(elapsed / 3600), (int)((elapsed % 3600) / 60), (int)(elapsed % 60));
+    // Timestamp mais realístico baseado no tempo atual (13 de junho de 2025 como base)
+    unsigned long totalSeconds = elapsed + 1734120000; // Offset para 13/06/2025 00:00:00 UTC
+    unsigned long days = totalSeconds / 86400;
+    unsigned long daySeconds = totalSeconds % 86400;
+    unsigned long hours = daySeconds / 3600;
+    unsigned long minutes = (daySeconds % 3600) / 60;
+    unsigned long seconds = daySeconds % 60;
+    
+    // Ajustar para 13 de junho de 2025 como data base
+    int day = 13 + (days % 30); // Simular progressão de dias
+    int month = 6;
+    int year = 2025;
+    
+    if (day > 30) {
+        day = day - 30;
+        month++;
+        if (month > 12) {
+            month = 1;
+            year++;
+        }
+    }
+    
+    sprintf(timestamp, "%04d-%02d-%02dT%02d:%02d:%02dZ", 
+            year, month, day, (int)hours, (int)minutes, (int)seconds);
     
     doc["timestamp"] = timestamp;
     doc["scenario"] = currentScenario;
@@ -313,6 +385,207 @@ void updateScenarioStep() {
     } else if (currentScenario == "extreme_conditions") {
         testStep = (elapsed / 20) % 6 + 1; // Steps 1-6, muda a cada 20s
     }
+}
+
+// Configuração WiFi
+void setupWiFi() {
+    WiFi.begin(ssid, password);
+    Serial.print("Conectando ao WiFi");
+    
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+        delay(500);
+        Serial.print(".");
+        attempts++;
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println();
+        Serial.print("WiFi conectado! IP: ");
+        Serial.println(WiFi.localIP());
+        
+        // Mostrar IP no LCD
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("WiFi: OK");
+        lcd.setCursor(0, 1);
+        lcd.print(WiFi.localIP());
+        delay(3000);
+    } else {
+        Serial.println("\nWiFi falhou - modo standalone");
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("WiFi: FALHOU");
+        lcd.setCursor(0, 1);
+        lcd.print("Modo local");
+        delay(2000);
+    }
+}
+
+// Configuração das rotas da API REST
+void setupAPIRoutes() {
+    // Middleware CORS
+    server.onNotFound([](AsyncWebServerRequest *request) {
+        if (request->method() == HTTP_OPTIONS) {
+            handleCORS(request);
+        } else {
+            request->send(404, "application/json", "{\"error\":\"Endpoint not found\"}");
+        }
+    });
+
+    // GET /api/status - Status atual dos sensores
+    server.on("/api/status", HTTP_GET, [](AsyncWebServerRequest *request) {        
+        JsonDocument doc;
+        doc["status"] = "online";
+        doc["scenario"] = currentScenario;
+        doc["alert_level"] = alertLevel;
+        doc["uptime_seconds"] = millis() / 1000;
+        doc["wifi_ip"] = WiFi.localIP().toString();
+        
+        JsonObject overrides = doc["overrides"].to<JsonObject>();
+        overrides["dht22"] = sensorOverrides.dht22_override;
+        overrides["ldr"] = sensorOverrides.ldr_override;
+        overrides["mpu6050"] = sensorOverrides.mpu6050_override;
+        
+        String responseStr;
+        serializeJson(doc, responseStr);
+        
+        AsyncWebServerResponse *response = request->beginResponse(200, "application/json", responseStr);
+        response->addHeader("Access-Control-Allow-Origin", "*");
+        request->send(response);
+    });
+
+    // POST /api/sensors/dht22 - Controlar temperatura e umidade
+    server.on("/api/sensors/dht22", HTTP_POST, [](AsyncWebServerRequest *request) {
+        // Headers serão adicionados no callback de body
+    }, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        JsonDocument doc;
+        if (deserializeJson(doc, data, len) == DeserializationError::Ok) {
+            
+            if (!doc["temperature"].isNull()) {
+                sensorOverrides.temperature_override = doc["temperature"];
+                sensorOverrides.dht22_override = true;
+            }
+            if (!doc["humidity"].isNull()) {
+                sensorOverrides.humidity_override = doc["humidity"];
+                sensorOverrides.dht22_override = true;
+            }
+            if (!doc["disable"].isNull() && doc["disable"]) {
+                sensorOverrides.dht22_override = false;
+            }
+            
+            JsonDocument response;
+            response["success"] = true;
+            response["temperature"] = sensorOverrides.temperature_override;
+            response["humidity"] = sensorOverrides.humidity_override;
+            response["override_active"] = sensorOverrides.dht22_override;
+            
+            String responseStr;
+            serializeJson(response, responseStr);
+            
+            AsyncWebServerResponse *resp = request->beginResponse(200, "application/json", responseStr);
+            resp->addHeader("Access-Control-Allow-Origin", "*");
+            request->send(resp);
+        } else {
+            request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+        }
+    });
+
+    // POST /api/sensors/ldr - Controlar luminosidade
+    server.on("/api/sensors/ldr", HTTP_POST, [](AsyncWebServerRequest *request) {
+        handleCORS(request);
+    }, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        JsonDocument doc;
+        if (deserializeJson(doc, data, len) == DeserializationError::Ok) {
+            
+            if (!doc["raw_value"].isNull()) {
+                sensorOverrides.ldr_raw_override = doc["raw_value"];
+                sensorOverrides.ldr_override = true;
+            }
+            if (!doc["disable"].isNull() && doc["disable"]) {
+                sensorOverrides.ldr_override = false;
+            }
+            
+            JsonDocument response;
+            response["success"] = true;
+            response["raw_value"] = sensorOverrides.ldr_raw_override;
+            response["lux"] = calculateLux(sensorOverrides.ldr_raw_override);
+            response["override_active"] = sensorOverrides.ldr_override;
+            
+            String responseStr;
+            serializeJson(response, responseStr);
+            request->send(200, "application/json", responseStr);
+        } else {
+            request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+        }
+    });
+
+    // POST /api/sensors/mpu6050 - Controlar aceleração
+    server.on("/api/sensors/mpu6050", HTTP_POST, [](AsyncWebServerRequest *request) {
+        handleCORS(request);
+    }, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        JsonDocument doc;
+        if (deserializeJson(doc, data, len) == DeserializationError::Ok) {
+            
+            if (!doc["accel_x"].isNull()) {
+                sensorOverrides.accel_x_override = doc["accel_x"];
+                sensorOverrides.mpu6050_override = true;
+            }
+            if (!doc["accel_y"].isNull()) {
+                sensorOverrides.accel_y_override = doc["accel_y"];
+                sensorOverrides.mpu6050_override = true;
+            }
+            if (!doc["accel_z"].isNull()) {
+                sensorOverrides.accel_z_override = doc["accel_z"];
+                sensorOverrides.mpu6050_override = true;
+            }
+            if (!doc["disable"].isNull() && doc["disable"]) {
+                sensorOverrides.mpu6050_override = false;
+            }
+            
+            JsonDocument response;
+            response["success"] = true;
+            response["accel_x"] = sensorOverrides.accel_x_override;
+            response["accel_y"] = sensorOverrides.accel_y_override;
+            response["accel_z"] = sensorOverrides.accel_z_override;
+            response["override_active"] = sensorOverrides.mpu6050_override;
+            
+            String responseStr;
+            serializeJson(response, responseStr);
+            request->send(200, "application/json", responseStr);
+        } else {
+            request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+        }
+    });
+
+    // POST /api/sensors/reset - Resetar todos os overrides
+    server.on("/api/sensors/reset", HTTP_POST, [](AsyncWebServerRequest *request) {
+        handleCORS(request);
+        
+        sensorOverrides.dht22_override = false;
+        sensorOverrides.ldr_override = false;
+        sensorOverrides.mpu6050_override = false;
+        
+        JsonDocument response;
+        response["success"] = true;
+        response["message"] = "All sensor overrides disabled";
+        
+        String responseStr;
+        serializeJson(response, responseStr);
+        request->send(200, "application/json", responseStr);
+    });
+
+    server.begin();
+    Serial.println("Servidor HTTP iniciado na porta 80");
+}
+
+// Manipular headers CORS
+void handleCORS(AsyncWebServerRequest *request) {
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "");
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+    request->send(response);
 }
 
 // Função para mudar cenário via comando serial (opcional)
