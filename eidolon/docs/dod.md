@@ -26,7 +26,7 @@
 * A velocidade `baud rate = 115200 bps` está sincronizada entre `diagram.json` e `mnemon`.
 * Console do Wokwi exibe mensagens uniformes, sem formatos quebrados ou truncados.
 
-**✅ Status:** Firmware implementado com JSON completo. Formato: `{"timestamp":"2024-06-13T00:00:03Z","scenario":"sensor_validation","sensors":{"dht22":{"temperature":25,"humidity":60},"ldr":{"raw":1001,"lux":20},"mpu6050":{"accelX":0,"accelY":0,"accelZ":1}},"actuators":{"rgb_led":"green","buzzer":"off"},"alert_level":"normal"}`. LCD I2C adicionado para visualização.
+**✅ Status:** Firmware implementado com JSON completo. Formato: `{"timestamp":"2025-06-13T00:00:03Z","scenario":"sensor_validation","sensors":{"dht22":{"temperature":25,"humidity":60},"ldr":{"raw":1001,"lux":20},"mpu6050":{"accelX":0,"accelY":0,"accelZ":1}},"actuators":{"rgb_led":"green","buzzer":"off"},"alert_level":"normal"}`. LCD I2C adicionado para visualização.
 
 ---
 

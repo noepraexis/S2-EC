@@ -214,7 +214,7 @@ curl -X POST http://localhost:8888/api/sensors/ldr \
 ## 🌟 Resultados Alcançados
 
 ### ✅ Evolução do Sistema:
-1. **v1.0**: Sensores básicos + LCD
+1. **v2.0**: Sensores básicos + LCD + API REST
 2. **v2.0**: API REST + WiFi + Controle dinâmico ← **ATUAL**
 
 ### ✅ Capacidades Atuais:
