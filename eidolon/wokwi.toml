@@ -6,6 +6,19 @@ name = "eidolon"
 firmware = "../mnemon/.pio/build/esp32dev/firmware.bin"
 elf = "../mnemon/.pio/build/esp32dev/firmware.elf"
 
+# Cenários de teste disponíveis
+[[scenario]]
+name = "sensor_validation"
+path = "./scenarios/sensor_validation.yaml"
+
+[[scenario]] 
+name = "realistic_conditions"
+path = "./scenarios/realistic_conditions.yaml"
+
+[[scenario]]
+name = "extreme_conditions" 
+path = "./scenarios/extreme_conditions.yaml"
+
 [[net.forward]]
 from = "localhost:8888"
 to = "target:80"
